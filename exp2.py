@@ -1,3 +1,16 @@
+"""Experiment 2: individual trajectories behind the aggregate LMO bound.
+
+Experiment 1 shows that the largest LMO bound can plateau or under-recover
+the theoretical ceiling. This script looks inside that maximum by tracking,
+for each individual, the largest fitted Gamma they achieve across all dropped
+subsets of a given size m.
+
+The purpose is to show that the empirical maximum is driven by rare boundary
+individuals, not by a typical sample member. A large individual bound appears
+when the omitted covariates have large magnitude and align in sign with the
+treatment weights; mixed signs partially cancel in the dropped logit.
+"""
+
 from itertools import combinations
 
 import numpy as np
@@ -17,11 +30,8 @@ from utils import (
 )
 
 
-"""Experiment 2: individual-level Gamma trajectories and envelope diagnostics."""
-
-
 def generate_uniform_data(n, p, weights, seed):
-    """Generate one dataset from the uniform logistic DGP."""
+    """Generate the uniform dataset used to inspect individual LMO paths."""
     rng = np.random.default_rng(seed)
 
     X = rng.uniform(-1.0, 1.0, size=(n, p))
@@ -33,6 +43,7 @@ def generate_uniform_data(n, p, weights, seed):
 
 
 def calculate_individual_gammas_for_m(X, T, m, estimator, full_logits):
+    """Return each individual's strongest fitted Gamma across subsets of size m."""
     n, p = X.shape
     max_gamma_per_individual = np.ones(n)
     marginal_logit = marginal_logit_from_treatment(T)
@@ -46,6 +57,8 @@ def calculate_individual_gammas_for_m(X, T, m, estimator, full_logits):
             marginal_logit=marginal_logit,
         )
 
+        # Keep the individual envelope: each person can have a different subset
+        # that produces their largest full-vs-reduced fitted logit shift.
         gamma = np.exp(np.abs(full_logits - reduced_logits))
         max_gamma_per_individual = np.maximum(max_gamma_per_individual, gamma)
 
@@ -53,6 +66,7 @@ def calculate_individual_gammas_for_m(X, T, m, estimator, full_logits):
 
 
 def compute_individual_trajectories(X, T, m_values, estimator):
+    """Create a matrix with rows as m values and columns as individuals."""
     full_logits = fit_full_logits(X, T, estimator)
 
     n = X.shape[0]
@@ -71,6 +85,7 @@ def compute_individual_trajectories(X, T, m_values, estimator):
 
 
 def run_experiment_2():
+    """Run the individual-level diagnostic and export trajectory summaries."""
     setup_environment()
 
     N = 10000

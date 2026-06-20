@@ -1,3 +1,21 @@
+"""Experiment 1: aggregate recovery of LMO informal benchmarking.
+
+This script compares how three Gamma curves behave as the dropped subset
+size m increases under the uniform synthetic DGP:
+
+1. Empirical Gamma: the practical informal benchmark from fitted full and
+   reduced logistic propensity models.
+2. Oracle Gamma: a sample-realized structural benchmark using the known
+   dropped logit contribution X_S @ w_S.
+3. Theoretical Gamma: the analytical ceiling over the full bounded covariate
+   space, attained only at aligned corners.
+
+The experiment supports the thesis' main reversal pattern: the theoretical
+ceiling rises monotonically with m, while empirical and oracle bounds can
+plateau or decline when the finite sample lacks the required corner-aligned
+individuals.
+"""
+
 from itertools import combinations
 
 import numpy as np
@@ -19,11 +37,8 @@ from utils import (
 )
 
 
-"""Experiment 1: aggregate empirical and oracle LMO behavior across sample sizes."""
-
-
 def generate_uniform_data(n, p, weights, seed):
-    """Generate uniform covariates and Bernoulli treatment from the logistic DGP."""
+    """Generate bounded uniform covariates and treatment from the fixed logistic DGP."""
     rng = np.random.default_rng(seed)
 
     X = rng.uniform(-1.0, 1.0, size=(n, p))
@@ -35,15 +50,20 @@ def generate_uniform_data(n, p, weights, seed):
 
 
 def evaluate_lmo_for_m(X, T, weights, m, estimator, n_jobs=-1):
+    """Evaluate every dropped subset of size m and return the strongest bounds."""
     p = X.shape[1]
     full_logits = fit_full_logits(X, T, estimator)
     marginal_logit = marginal_logit_from_treatment(T)
 
     def evaluate_subset(subset):
         idx = list(subset)
+
+        # Oracle: use the known structural contribution removed by hiding subset S.
         dropped_logit_contribution = X[:, idx] @ weights[idx]
         oracle_gamma = np.exp(np.max(np.abs(dropped_logit_contribution)))
 
+        # Empirical: refit the reduced propensity model as informal benchmarking
+        # would in practice, then take the largest sample logit shift.
         reduced_logits = fit_reduced_logits(
             X=X,
             T=T,
@@ -66,6 +86,7 @@ def evaluate_lmo_for_m(X, T, weights, m, estimator, n_jobs=-1):
 
 
 def evaluate_dataset(X, T, weights, m_values, estimator, n_jobs=-1):
+    """Build the Gamma curve for one simulated dataset across all subset sizes."""
     rows = []
 
     for m in m_values:
@@ -90,6 +111,7 @@ def evaluate_dataset(X, T, weights, m_values, estimator, n_jobs=-1):
 
 
 def run_experiment():
+    """Run the sample-size comparison and export the thesis tables and figures."""
     setup_environment()
 
     num_iterations = 10

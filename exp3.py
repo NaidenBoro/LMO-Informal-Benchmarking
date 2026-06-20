@@ -1,3 +1,16 @@
+"""Experiment 3: corner injection as a mechanism test for LMO under-recovery.
+
+If empirical LMO bounds plateau because the sample misses the covariate
+corners that realize large dropped logit shifts, then adding such observations
+should increase the fitted benchmark. This experiment compares standard
+uniform samples against matched samples where two observations are replaced by
+the all-negative and all-positive corners.
+
+The standard and corner-injected datasets share the same random base sample
+and treatment uniforms. That keeps the comparison focused on sample geometry
+rather than unrelated Monte Carlo variation.
+"""
+
 from itertools import combinations
 
 import numpy as np
@@ -19,18 +32,19 @@ from utils import (
 )
 
 
-"""Experiment 3: compare standard vs corner-injected samples under matched randomness."""
-
-
 def generate_matched_datasets(n, p, weights, seed):
+    """Create standard and corner-injected datasets with matched randomness."""
     rng = np.random.default_rng(seed)
 
     X_std = rng.uniform(-1.0, 1.0, size=(n, p))
 
+    # Inject the two most aligned corners for the positive-weight DGP.
     X_corner = X_std.copy()
     X_corner[-2, :] = -1.0
     X_corner[-1, :] = 1.0
 
+    # Reuse treatment uniforms so differences are attributable to the changed
+    # covariate geometry and its implied propensity scores.
     treatment_uniforms = rng.uniform(0.0, 1.0, size=n)
 
     prop_std = expit(X_std @ weights)
@@ -46,6 +60,7 @@ def generate_matched_datasets(n, p, weights, seed):
 
 
 def evaluate_lmo_for_m(X, T, m, estimator, n_jobs=-1):
+    """Return the strongest fitted LMO bound across subsets of size m."""
     p = X.shape[1]
     validate_binary_treatment(T)
     full_logits = fit_full_logits(X, T, estimator)
@@ -71,6 +86,7 @@ def evaluate_lmo_for_m(X, T, m, estimator, n_jobs=-1):
 
 
 def evaluate_dataset(X, T, weights, m_values, estimator, n_jobs=-1):
+    """Evaluate one dataset and attach recovery relative to the theory curve."""
     rows = []
     theoretical = theoretical_gamma_curve(weights, m_values)
 
@@ -96,6 +112,7 @@ def evaluate_dataset(X, T, weights, m_values, estimator, n_jobs=-1):
 
 
 def run_experiment_3():
+    """Run the matched standard-vs-corner Monte Carlo comparison."""
     setup_environment()
 
     num_iterations = 10

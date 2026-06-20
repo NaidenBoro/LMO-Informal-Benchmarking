@@ -1,3 +1,19 @@
+"""Experiment 4: covariate geometry and sample-realized LMO recovery.
+
+This script keeps the same structural treatment-assignment rule but changes
+where observations fall inside the bounded covariate space. The thesis claim
+tested here is that LMO benchmarking recovers larger bounds when the sample
+places more mass near the relevant boundary regions.
+
+The three DGP geometries are:
+1. beta_u: boundary-heavy Beta(0.2, 0.2), scaled to [-1, 1].
+2. uniform: flat density on [-1, 1].
+3. beta_bell: center-heavy Beta(5.0, 5.0), scaled to [-1, 1].
+
+Both fitted and oracle curves are exported so the geometry effect can be
+distinguished from logistic-regression estimation error.
+"""
+
 from itertools import combinations
 
 import numpy as np
@@ -19,10 +35,8 @@ from utils import (
 )
 
 
-"""Experiment 4: assess how covariate geometry changes empirical LMO recovery."""
-
-
 def generate_data(n, p, weights, seed, dgp_type):
+    """Generate covariates from a chosen geometry and treatment from the same DGP."""
     rng = np.random.default_rng(seed)
 
     if dgp_type == "uniform":
@@ -44,10 +58,13 @@ def generate_data(n, p, weights, seed, dgp_type):
 
 
 def evaluate_oracle_for_m(X, weights, m):
+    """Compute the strongest sample-realized structural bound for subset size m."""
     p = X.shape[1]
     subset_gammas = []
 
     for subset in combinations(range(p), m):
+        # The oracle asks what the known omitted logit contribution can realize
+        # in this sample, without fitting reduced propensity models.
         dropped_logit = X[:, list(subset)] @ weights[list(subset)]
         subset_gammas.append(np.exp(np.max(np.abs(dropped_logit))))
 
@@ -55,6 +72,7 @@ def evaluate_oracle_for_m(X, weights, m):
 
 
 def evaluate_lmo_for_m(X, T, m, estimator, n_jobs=-1):
+    """Compute the fitted informal benchmark across all subsets of size m."""
     p = X.shape[1]
     full_logits = fit_full_logits(X, T, estimator)
     marginal_logit = marginal_logit_from_treatment(T)
@@ -78,6 +96,7 @@ def evaluate_lmo_for_m(X, T, m, estimator, n_jobs=-1):
 
 
 def evaluate_dataset(X, T, weights, m_values, estimator, n_jobs=-1):
+    """Evaluate fitted, oracle, and theoretical curves for one generated sample."""
     theoretical = theoretical_gamma_curve(weights, m_values)
     rows = []
 
@@ -106,6 +125,7 @@ def evaluate_dataset(X, T, weights, m_values, estimator, n_jobs=-1):
 
 
 def run_experiment_4():
+    """Run the geometry comparison and export final recovery summaries."""
     setup_environment()
 
     num_iterations = 10
