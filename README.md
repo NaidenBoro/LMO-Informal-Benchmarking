@@ -99,11 +99,18 @@ python exp3.py
 python exp4.py
 ```
 
-The full set of experiments runs in less than about 10-20 minutes total on the machine used for the thesis runs. Experiment 1 and the all-subset Monte Carlo experiments are the slowest because each `m` evaluates all feature combinations.
+The full set of experiments runs in less than about 10-20 minutes total on the machine used for the thesis runs.
 
 ## Reproducibility
 
-The checked-in `outputs/` and `figures/` are the generated results used in the thesis. Re-running the scripts overwrites those files with freshly generated summaries and plots.
+The experiments are fully reproducible from these fixed seeds:
+
+- `exp1.py`: `seed = 1000 + iteration + n`
+- `exp2.py`: `seed = 42`
+- `exp3.py`: `seed = 2000 + iteration`
+- `exp4.py`: `seed = 3000 + iteration`
+
+Each script also uses `random_state=42` for the logistic-regression estimator. Re-running the scripts regenerates the same summaries and figures from the source code.
 
 ## License
 
